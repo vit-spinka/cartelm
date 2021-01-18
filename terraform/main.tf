@@ -47,6 +47,49 @@ resource "aws_iam_role" "iam_for_lambda" {
 EOF
 }
 
+
+resource "aws_iam_policy" "lambda_policy" {
+  name        = "lambda_dynamodb_and_logging"
+  path        = "/"
+  description = "IAM policy to access our DynamoDB table; also allow logging"
+
+  policy = <<EOF
+{
+	"Version": "2012-10-17",
+	"Statement": [{
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:GetItem",
+				"dynamodb:Query",
+				"dynamodb:Scan",
+				"dynamodb:PutItem",
+				"dynamodb:UpdateItem"
+			],
+			"Resource": "arn:aws:dynamodb:${var.region}:*:table/${aws_dynamodb_table.cartelm_table.name}"
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
+				"logs:CreateLogStream",
+				"logs:PutLogEvents"
+			],
+			"Resource": "arn:aws:logs:${var.region}:*:*"
+		},
+		{
+			"Effect": "Allow",
+			"Action": "logs:CreateLogGroup",
+			"Resource": "*"
+		}
+	]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_logs" {
+  role       = aws_iam_role.iam_for_lambda.name
+  policy_arn = aws_iam_policy.lambda_policy.arn
+}
+
 resource "aws_lambda_function" "list_all_lambda" {
   filename      = "../rust/list_all.zip"
   function_name = "cartelm_list_all"
@@ -279,16 +322,6 @@ resource "aws_dynamodb_table" "cartelm_table" {
     name = "subscriptionId"
     type = "S"
   }
-
-  #   attribute {
-  #     name = "cartoon"
-  #     type = "S"
-  #   }
-
-  #   attribute {
-  #     name = "email"
-  #     type = "S"
-  #   }
 
   tags = {
     Environment = var.tag_envname

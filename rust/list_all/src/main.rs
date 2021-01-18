@@ -1,17 +1,22 @@
 use std::error::Error;
 
 use lambda_runtime::{error::HandlerError, lambda, Context};
-use log::{self}; //, error};
+use rusoto_core::Region;
+use rusoto_dynamodb::{DynamoDb, DynamoDbClient, ScanInput};
 use serde_derive::{Deserialize, Serialize};
-// use serde_json::Result;
-// use simple_error::bail;
-use simple_logger;
+use simple_logger::SimpleLogger;
+use std::env;
+
+#[derive(Serialize)]
+struct Item {
+    #[serde(rename = "subscriptionId")]
+    subscription_id: String,
+    cartoon: String,
+    email: String,
+}
 
 #[derive(Deserialize)]
-struct CustomEvent {
-    // #[serde(rename = "firstName")]
-// first_name: String,
-}
+struct CustomEvent {}
 
 #[derive(Serialize, Clone)]
 struct CustomOutput {
@@ -32,27 +37,47 @@ impl CustomOutput {
     }
 }
 
-#[derive(Serialize)]
-struct DataOutput {
-    message: String,
-}
+type DataOutput = Vec<Item>;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    simple_logger::init_with_level(log::Level::Debug)?;
+    SimpleLogger::new().init()?;
     lambda!(my_handler);
 
     Ok(())
 }
 
 fn my_handler(_e: CustomEvent, _c: Context) -> Result<CustomOutput, HandlerError> {
-    // if e.first_name == "" {
-    //     error!("Empty first name in request {}", c.aws_request_id);
-    //     bail!("Empty first name");
-    // }
-    let data = DataOutput {
-        message: format!("Hello, {}!", "NAME"),
+    let table_name = env::var("DYNAMODB_TABLE").expect("DYNAMODB_TABLE not set");
+    let dynamodb_client = DynamoDbClient::new(Region::default());
+
+    let dynanmodb_request = ScanInput {
+        table_name: table_name,
+        ..Default::default()
     };
-    Ok(CustomOutput::new(serde_json::to_string(&data)?))
-    // Ok(CustomOutput::new("".to_string())) // message: format!("Hello, {}!", "NAME"), //e.first_name),
-    // Ok(DataOutput {        message: format!("Hello, {}!", "NAME"),    }) //e.first_name),
+
+    let dynamodb_result = dynamodb_client.scan(dynanmodb_request);
+    let get_item_output = dynamodb_result.sync();
+
+    match get_item_output {
+        Ok(get_item_output) => {
+            let data: DataOutput = get_item_output
+                .items
+                .unwrap()
+                .into_iter()
+                .map(|item| Item {
+                    subscription_id: item
+                        .get("subscriptionId")
+                        .unwrap()
+                        .s
+                        .as_ref()
+                        .unwrap()
+                        .clone(),
+                    cartoon: item.get("cartoon").unwrap().s.as_ref().unwrap().clone(),
+                    email: item.get("email").unwrap().s.as_ref().unwrap().clone(),
+                })
+                .collect();
+            Ok(CustomOutput::new(serde_json::to_string(&data)?))
+        }
+        Err(error) => Err(HandlerError::from(format!("{:?}", error).as_str())),
+    }
 }

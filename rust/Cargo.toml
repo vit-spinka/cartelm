@@ -4,5 +4,6 @@ members = [
     "list_all",
     "update",
     "get",
-    "delete"
+    "delete",
+    "create"
 ]
