@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "list_all",
+    "update"
+]

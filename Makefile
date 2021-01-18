@@ -1,0 +1,11 @@
+.PHONY: all rust
+
+all: rust terraform
+
+terraform:
+	cd terraform && terraform apply
+
+rust:
+	cd rust && cargo build --release --target x86_64-unknown-linux-musl
+	cd rust && cp ./target/x86_64-unknown-linux-musl/release/list_all ./bootstrap && zip list_all.zip bootstrap && rm bootstrap
+	cd rust && cp ./target/x86_64-unknown-linux-musl/release/update ./bootstrap && zip update.zip bootstrap && rm bootstrap
