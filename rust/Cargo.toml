@@ -2,5 +2,7 @@
 
 members = [
     "list_all",
-    "update"
+    "update",
+    "get",
+    "delete"
 ]
