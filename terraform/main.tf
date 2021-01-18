@@ -56,6 +56,12 @@ resource "aws_lambda_function" "list_all_lambda" {
   source_code_hash = filebase64sha256("../rust/list_all.zip")
 
   runtime = "provided.al2"
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.cartelm_table.name
+    }
+  }
 }
 
 resource "aws_lambda_function" "get_lambda" {
@@ -67,6 +73,12 @@ resource "aws_lambda_function" "get_lambda" {
   source_code_hash = filebase64sha256("../rust/get.zip")
 
   runtime = "provided.al2"
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.cartelm_table.name
+    }
+  }
 }
 
 resource "aws_lambda_function" "update_lambda" {
@@ -78,6 +90,12 @@ resource "aws_lambda_function" "update_lambda" {
   source_code_hash = filebase64sha256("../rust/update.zip")
 
   runtime = "provided.al2"
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.cartelm_table.name
+    }
+  }
 }
 
 resource "aws_lambda_function" "delete_lambda" {
@@ -89,6 +107,12 @@ resource "aws_lambda_function" "delete_lambda" {
   source_code_hash = filebase64sha256("../rust/delete.zip")
 
   runtime = "provided.al2"
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.cartelm_table.name
+    }
+  }
 }
 
 resource "aws_api_gateway_rest_api" "cartelm_api_gateway" {
@@ -246,4 +270,27 @@ resource "aws_lambda_permission" "delete" {
   source_arn = "${aws_api_gateway_rest_api.cartelm_api_gateway.execution_arn}/*/*"
 }
 
+resource "aws_dynamodb_table" "cartelm_table" {
+  name         = "CartElmSubscriptions"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "subscriptionId"
 
+  attribute {
+    name = "subscriptionId"
+    type = "S"
+  }
+
+  #   attribute {
+  #     name = "cartoon"
+  #     type = "S"
+  #   }
+
+  #   attribute {
+  #     name = "email"
+  #     type = "S"
+  #   }
+
+  tags = {
+    Environment = var.tag_envname
+  }
+}

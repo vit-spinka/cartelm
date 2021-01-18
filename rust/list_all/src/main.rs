@@ -53,4 +53,6 @@ fn my_handler(_e: CustomEvent, _c: Context) -> Result<CustomOutput, HandlerError
         message: format!("Hello, {}!", "NAME"),
     };
     Ok(CustomOutput::new(serde_json::to_string(&data)?))
+    // Ok(CustomOutput::new("".to_string())) // message: format!("Hello, {}!", "NAME"), //e.first_name),
+    // Ok(DataOutput {        message: format!("Hello, {}!", "NAME"),    }) //e.first_name),
 }
