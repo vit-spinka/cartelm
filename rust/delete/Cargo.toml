@@ -1,9 +1,17 @@
 [package]
 name = "delete"
 version = "0.1.0"
-authors = ["Vit Spinka <spinka@pythian.com>"]
+authors = ["Vit Spinka <vit.spinka@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+lambda_runtime = "^0.2"
+serde = "^1"
+serde_derive = "^1"
+serde_json = "^1"
+log = "^0.4"
+simple_logger = "^1"
+simple-error = "^0.2"
+rusoto_core = {version = "^0.42", default_features = false, features=["rustls"]}
+rusoto_dynamodb = {version = "^0.42", default_features = false, features=["rustls"]}
+futures = "^0.3"

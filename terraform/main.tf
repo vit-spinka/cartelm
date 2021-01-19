@@ -63,7 +63,8 @@ resource "aws_iam_policy" "lambda_policy" {
 				"dynamodb:Query",
 				"dynamodb:Scan",
 				"dynamodb:PutItem",
-				"dynamodb:UpdateItem"
+				"dynamodb:UpdateItem",
+				"dynamodb:DeleteItem"
 			],
 			"Resource": "arn:aws:dynamodb:${var.region}:*:table/${aws_dynamodb_table.cartelm_table.name}"
 		},
@@ -158,6 +159,23 @@ resource "aws_lambda_function" "delete_lambda" {
   }
 }
 
+resource "aws_lambda_function" "create_lambda" {
+  filename      = "../rust/create.zip"
+  function_name = "cartelm_create"
+  role          = aws_iam_role.iam_for_lambda.arn
+  handler       = "hello.handler" # this is a required parameter, but not used?
+
+  source_code_hash = filebase64sha256("../rust/create.zip")
+
+  runtime = "provided.al2"
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.cartelm_table.name
+    }
+  }
+}
+
 resource "aws_api_gateway_rest_api" "cartelm_api_gateway" {
   name        = "CartElm gateway"
   description = "REST API for CartElm (admin)"
@@ -234,11 +252,11 @@ resource "aws_api_gateway_integration" "delete_lambda" {
   uri                     = aws_lambda_function.delete_lambda.invoke_arn
 }
 
-# update/create
+# update
 resource "aws_api_gateway_method" "update" {
   rest_api_id   = aws_api_gateway_rest_api.cartelm_api_gateway.id
   resource_id   = aws_api_gateway_resource.subscription.id
-  http_method   = "POST"
+  http_method   = "PUT"
   authorization = "NONE"
 
   request_parameters = {
@@ -256,6 +274,23 @@ resource "aws_api_gateway_integration" "update_lambda" {
   uri                     = aws_lambda_function.update_lambda.invoke_arn
 }
 
+# create
+resource "aws_api_gateway_method" "create" {
+  rest_api_id   = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id   = aws_api_gateway_resource.subscriptions.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "create_lambda" {
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id = aws_api_gateway_method.create.resource_id
+  http_method = aws_api_gateway_method.create.http_method
+
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.create_lambda.invoke_arn
+}
 
 resource "aws_api_gateway_deployment" "api_gateway_deployment" {
   depends_on = [
@@ -263,6 +298,7 @@ resource "aws_api_gateway_deployment" "api_gateway_deployment" {
     aws_api_gateway_integration.get_lambda,
     aws_api_gateway_integration.update_lambda,
     aws_api_gateway_integration.delete_lambda,
+    aws_api_gateway_integration.create_lambda
   ]
 
   rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
@@ -306,6 +342,17 @@ resource "aws_lambda_permission" "delete" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.delete_lambda.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  # The "/*/*" portion grants access from any method on any resource
+  # within the API Gateway REST API.
+  source_arn = "${aws_api_gateway_rest_api.cartelm_api_gateway.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "create" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_lambda.function_name
   principal     = "apigateway.amazonaws.com"
 
   # The "/*/*" portion grants access from any method on any resource

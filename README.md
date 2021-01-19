@@ -4,11 +4,10 @@ Download and send a cartoon every day. Manage subscriptions.
 
 ## AWS
 
-* Use a test/trial account (?)
 * Host a domain
 * DynamoDB - one table, on-demand
 * Lambda scheduled to download the comics, based on DynamoDB query/scan
-* Lambda REST API: list all; update/insert; delete
+* Lambda REST API: list all; update; create; get; delete
 * API gateway
 * S3 static hosting
 * S3 terraform state
