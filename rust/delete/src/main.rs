@@ -59,7 +59,7 @@ fn my_handler(e: CustomEvent, _c: Context) -> Result<CustomOutput, HandlerError>
 
     let dynanmodb_request = DeleteItemInput {
         key: key_pair,
-        table_name: table_name,
+        table_name,
         ..Default::default()
     };
 

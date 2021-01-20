@@ -81,8 +81,8 @@ fn my_handler(e: CustomEvent, _c: Context) -> Result<CustomOutput, HandlerError>
     );
 
     let dynanmodb_request = PutItemInput {
-        item: item,
-        table_name: table_name,
+        item,
+        table_name,
         ..Default::default()
     };
 

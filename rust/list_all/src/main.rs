@@ -51,7 +51,7 @@ fn my_handler(_e: CustomEvent, _c: Context) -> Result<CustomOutput, HandlerError
     let dynamodb_client = DynamoDbClient::new(Region::default());
 
     let dynanmodb_request = ScanInput {
-        table_name: table_name,
+        table_name,
         ..Default::default()
     };
 
