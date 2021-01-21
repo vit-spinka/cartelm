@@ -12,6 +12,7 @@ select = "^0.5"
 scraper = "^0.12"
 rusoto_core = {version = "^0.42", default_features = false, features=["rustls"]}
 rusoto_ses = {version = "^0.42", default_features = false, features=["rustls"]}
+rusoto_dynamodb = {version = "^0.42", default_features = false, features=["rustls"]}
 lettre = "^0.9"
 lettre_email = "^0.9"
 mime = "^0.3"

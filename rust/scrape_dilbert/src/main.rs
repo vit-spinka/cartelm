@@ -4,19 +4,15 @@ use lettre_email::EmailBuilder;
 use scraper::{Html, Selector};
 
 use rusoto_core::Region;
+use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, ScanInput};
 use rusoto_ses::{Ses, SesClient};
+use std::collections::HashMap;
+use std::env;
 
 fn main() {
     let (image_url, date_encoded, _date_human) = scrape_website("https://dilbert.com");
 
     let image_data = reqwest::blocking::get(&image_url).unwrap().bytes().unwrap();
-
-    println!(
-        "{}#{}#{}",
-        &date_encoded[0..4],
-        &date_encoded[5..7],
-        &date_encoded[8..10]
-    );
 
     let (y, m, d) = (
         &date_encoded[0..4].parse::<u16>().unwrap(),
@@ -24,13 +20,15 @@ fn main() {
         &date_encoded[8..10].parse::<u16>().unwrap(),
     );
 
-    send_email(
-        "vit.spinka@gmail.com".to_string(),
-        "vit.spinka@gmail.com".to_string(),
-        format!("Dilbert for {}.{}.{}", d, m, y),
-        &format!("{}.gif", date_encoded),
-        &image_data.to_vec(),
-    );
+    for to in scan_table("dilbert") {
+        send_email(
+            "vit.spinka@gmail.com".to_string(),
+            to,
+            format!("Dilbert for {}.{}.{}", d, m, y),
+            &format!("{}.gif", date_encoded),
+            &image_data.to_vec(),
+        );
+    }
 }
 
 fn send_email(
@@ -41,7 +39,7 @@ fn send_email(
     attachment: &[u8],
 ) {
     let email: SendableEmail = EmailBuilder::new()
-        .to(to)
+        .to(to.clone())
         .from(from)
         .subject(subject)
         .attachment(attachment, attachment_filename, &mime::IMAGE_GIF)
@@ -73,8 +71,8 @@ fn send_email(
     let rt = ses_client.send_raw_email(request).sync();
 
     match rt {
-        Ok(p) => println!("{:?}", p),
-        Err(err) => println!("{:?}", err),
+        Ok(p) => println!("{} {:?}", &to, p),
+        Err(err) => println!("{} {:?}", &to, err),
     };
 }
 
@@ -95,4 +93,40 @@ fn scrape_website(url: &str) -> (String, String, String) {
         input.value().attr("data-id").unwrap().to_string(),
         input.value().attr("data-date").unwrap().to_string(),
     )
+}
+
+fn scan_table(cartoon: &str) -> Vec<String> {
+    let table_name = env::var("DYNAMODB_TABLE").expect("DYNAMODB_TABLE not set");
+    let dynamodb_client = DynamoDbClient::new(Region::default());
+
+    let filter_expression = "cartoon = :c";
+    let mut expression_attribute_values: HashMap<String, AttributeValue> = HashMap::new();
+
+    expression_attribute_values.insert(
+        ":c".to_string(),
+        AttributeValue {
+            s: Some(cartoon.to_string()),
+            ..Default::default()
+        },
+    );
+
+    let dynanmodb_request = ScanInput {
+        expression_attribute_values: Some(expression_attribute_values),
+        filter_expression: Some(filter_expression.to_string()),
+        table_name,
+        ..Default::default()
+    };
+
+    let dynamodb_result = dynamodb_client.scan(dynanmodb_request);
+    let scan_output = dynamodb_result.sync();
+
+    if let Ok(scan_items) = scan_output {
+        let items = scan_items.items.unwrap();
+        items
+            .iter()
+            .map(|item| item.get("email").unwrap().s.as_ref().unwrap().clone())
+            .collect::<Vec<String>>()
+    } else {
+        vec![]
+    }
 }
