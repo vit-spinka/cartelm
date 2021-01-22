@@ -7,14 +7,20 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "^0.11", features = ["blocking"]}
+lambda_runtime = "^0.2"
+serde = "^1"
+serde_derive = "^1"
+serde_json = "^1"
+log = "^0.4"
+simple_logger = "^1"
+simple-error = "^0.2"
+reqwest = { version = "^0.11", default-features = false,  features = ["blocking", "rustls-tls"]}
 select = "^0.5"
 scraper = "^0.12"
 rusoto_core = {version = "^0.42", default_features = false, features=["rustls"]}
 rusoto_ses = {version = "^0.42", default_features = false, features=["rustls"]}
 rusoto_dynamodb = {version = "^0.42", default_features = false, features=["rustls"]}
-lettre = "^0.9"
-lettre_email = "^0.9"
+lettre = { version = "0.10.0-alpha.4", default-features = false,  features = ["rustls-tls", "builder"]}
 mime = "^0.3"
 bytes = "^0.4"
 base64 = "^0.13"

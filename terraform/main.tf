@@ -80,6 +80,11 @@ resource "aws_iam_policy" "lambda_policy" {
 			"Effect": "Allow",
 			"Action": "logs:CreateLogGroup",
 			"Resource": "*"
+		},
+		{
+			"Effect": "Allow",
+			"Action": "ses:SendRawEmail",
+			"Resource": "arn:aws:ses:us-east-1:*:*"
 		}
 	]
 }
@@ -373,4 +378,46 @@ resource "aws_dynamodb_table" "cartelm_table" {
   tags = {
     Environment = var.tag_envname
   }
+}
+
+
+
+resource "aws_lambda_function" "scrape_dilbert_lambda" {
+  filename      = "../rust/scrape_dilbert.zip"
+  function_name = "cartelm_scrape_dilbert"
+  role          = aws_iam_role.iam_for_lambda.arn
+  handler       = "hello.handler" # this is a required parameter, but not used?
+
+  source_code_hash = filebase64sha256("../rust/scrape_dilbert.zip")
+
+  runtime = "provided.al2"
+
+  timeout = 60
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.cartelm_table.name
+    }
+  }
+}
+
+
+resource "aws_cloudwatch_event_rule" "utc20" {
+  name                = "utc20"
+  description         = "Every day at 20:00 UTC"
+  schedule_expression = "cron(0 20 * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "run_dilbert_daily" {
+  rule      = aws_cloudwatch_event_rule.utc20.name
+  target_id = "dilbert_daily"
+  arn       = aws_lambda_function.scrape_dilbert_lambda.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_to_call_check_foo" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.scrape_dilbert_lambda.arn
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.utc20.arn
 }

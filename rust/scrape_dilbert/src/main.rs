@@ -1,15 +1,26 @@
-use lettre::SendableEmail;
-use lettre_email::EmailBuilder;
-
-use scraper::{Html, Selector};
-
+use lambda_runtime::{error::HandlerError, lambda, Context};
+use lettre::message::{header, Message, SinglePart};
 use rusoto_core::Region;
 use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, ScanInput};
 use rusoto_ses::{Ses, SesClient};
+use scraper::{Html, Selector};
+use serde_derive::Deserialize;
+use simple_logger::SimpleLogger;
 use std::collections::HashMap;
 use std::env;
+use std::error::Error;
 
-fn main() {
+#[derive(Deserialize)]
+struct CustomEvent {}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    SimpleLogger::new().init()?;
+    lambda!(my_handler);
+
+    Ok(())
+}
+
+fn my_handler(_e: CustomEvent, _c: Context) -> Result<(), HandlerError> {
     let (image_url, date_encoded, _date_human) = scrape_website("https://dilbert.com");
 
     let image_data = reqwest::blocking::get(&image_url).unwrap().bytes().unwrap();
@@ -29,33 +40,37 @@ fn main() {
             &image_data.to_vec(),
         );
     }
+    Ok(())
 }
 
 fn send_email(
     from: String,
     to: String,
     subject: String,
-    attachment_filename: &str,
+    _attachment_filename: &str,
     attachment: &[u8],
 ) {
-    let email: SendableEmail = EmailBuilder::new()
-        .to(to.clone())
-        .from(from)
+    let email: Message = Message::builder()
+        .to(to.parse().unwrap())
+        .from(from.parse().unwrap())
         .subject(subject)
-        .attachment(attachment, attachment_filename, &mime::IMAGE_GIF)
-        .unwrap()
-        .build()
-        .unwrap()
-        .into();
+        .singlepart(
+            SinglePart::base64()
+                .header(header::ContentType("image/gif".parse().unwrap()))
+                .header(header::ContentDisposition {
+                    disposition: header::DispositionType::Inline,
+                    parameters: vec![],
+                })
+                .body(attachment),
+        )
+        .expect("failed to build email");
 
-    let email_as_string = email.message_to_string().unwrap();
-
-    // println!("{}", email_as_string);
+    let email_as_bytes = email.formatted();
 
     let ses_client = SesClient::new(Region::UsEast1);
 
     let raw_message = rusoto_ses::RawMessage {
-        data: bytes::Bytes::from(base64::encode(email_as_string)),
+        data: bytes::Bytes::from(base64::encode(email_as_bytes)),
     };
     let request = rusoto_ses::SendRawEmailRequest {
         configuration_set_name: None,
