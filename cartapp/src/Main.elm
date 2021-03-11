@@ -74,6 +74,8 @@ type Msg
     | UpdateAddedCartoon String
     | SaveNewSub
     | SaveNewSubResult (Result Http.Error String)
+    | DeleteSub String
+    | DeleteSubResult (Result Http.Error String)
 
 
 fetchGetAllSubs : Cmd Msg
@@ -84,6 +86,11 @@ fetchGetAllSubs =
 saveNewSub : Model -> Cmd Msg
 saveNewSub model =
     Http.post { url = baseUrl ++ "/test/subscription", body = Http.jsonBody (encodeAdd model), expect = Http.expectString SaveNewSubResult }
+
+
+deleteSub : String -> Cmd Msg
+deleteSub id =
+    Http.request { method = "DELETE", url = baseUrl ++ "/test/subscription/" ++ id, expect = Http.expectString DeleteSubResult, headers = [], body = Http.emptyBody, timeout = Nothing, tracker = Nothing }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -113,6 +120,15 @@ update msg model =
         SaveNewSubResult (Err _) ->
             ( { model | addingEnabled = True, addingError = Just "Save failed." }, Cmd.none )
 
+        DeleteSub id ->
+            ( model, deleteSub id )
+
+        DeleteSubResult (Ok _) ->
+            ( model, fetchGetAllSubs )
+
+        DeleteSubResult (Err _) ->
+            ( model, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -128,6 +144,7 @@ viewOneSub onesub =
     tr []
         [ td [] [ text onesub.email ]
         , td [] [ text onesub.cartoon ]
+        , td [] [ button [ onClick (DeleteSub onesub.subscriptionId) ] [ text "Delete" ] ]
         ]
 
 

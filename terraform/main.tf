@@ -304,7 +304,8 @@ resource "aws_api_gateway_deployment" "api_gateway_deployment" {
     aws_api_gateway_integration.update_lambda,
     aws_api_gateway_integration.delete_lambda,
     aws_api_gateway_integration.create_lambda,
-    aws_api_gateway_integration.options_mock
+    aws_api_gateway_integration.options_mock,
+    aws_api_gateway_integration.options_mock_one
   ]
 
   rest_api_id       = aws_api_gateway_rest_api.cartelm_api_gateway.id
@@ -446,6 +447,8 @@ resource "aws_lambda_permission" "allow_cloudwatch_to_call_check_foo" {
 # }
 
 
+### /subscriptions
+
 resource "aws_api_gateway_method" "method_options" {
   rest_api_id   = aws_api_gateway_rest_api.cartelm_api_gateway.id
   resource_id   = aws_api_gateway_resource.subscriptions.id
@@ -475,7 +478,7 @@ resource "aws_api_gateway_integration_response" "response_options" {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin"  = "'*'",
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'",
-    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST'"
   }
   depends_on = [
     aws_api_gateway_integration.options_mock,
@@ -501,5 +504,66 @@ resource "aws_api_gateway_method_response" "method_options_response" {
 
   depends_on = [
     aws_api_gateway_method.method_options,
+  ]
+}
+
+
+### /subscriptions/id
+
+resource "aws_api_gateway_method" "method_options_one" {
+  rest_api_id   = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id   = aws_api_gateway_resource.subscription.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_mock_one" {
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id = aws_api_gateway_resource.subscription.id
+  http_method = aws_api_gateway_method.method_options_one.http_method
+
+  type = "MOCK"
+
+  request_templates = {
+    "application/json" = "{ \"statusCode\": 200 }"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "response_options_one" {
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id = aws_api_gateway_resource.subscription.id
+  http_method = aws_api_gateway_method.method_options_one.http_method
+  status_code = 200
+
+  # response_parameters = local.integration_response_parameters
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'",
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'",
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,DELETE,PUT'"
+  }
+  depends_on = [
+    aws_api_gateway_integration.options_mock_one,
+    aws_api_gateway_method_response.method_options_response_one,
+  ]
+}
+
+# aws_api_gateway_method_response._
+resource "aws_api_gateway_method_response" "method_options_response_one" {
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id = aws_api_gateway_resource.subscription.id
+  http_method = aws_api_gateway_method.method_options_one.http_method
+  status_code = 200
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true,
+    "method.response.header.Access-Control-Allow-Methods" = true,
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+  response_models = {
+    "application/json" = "Empty"
+  }
+
+  depends_on = [
+    aws_api_gateway_method.method_options_one,
   ]
 }
