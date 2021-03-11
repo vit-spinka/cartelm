@@ -20,6 +20,7 @@ struct CustomOutput {
     is_base64_encoded: bool,
     #[serde(rename = "statusCode")]
     status_code: u16,
+    headers: HashMap<&'static str, &'static str>,
 }
 
 impl CustomOutput {
@@ -27,6 +28,9 @@ impl CustomOutput {
         CustomOutput {
             is_base64_encoded: false,
             status_code: 204,
+            headers: vec![("Access-Control-Allow-Origin", "*")]
+                .into_iter()
+                .collect(),
         }
     }
 }

@@ -303,11 +303,13 @@ resource "aws_api_gateway_deployment" "api_gateway_deployment" {
     aws_api_gateway_integration.get_lambda,
     aws_api_gateway_integration.update_lambda,
     aws_api_gateway_integration.delete_lambda,
-    aws_api_gateway_integration.create_lambda
+    aws_api_gateway_integration.create_lambda,
+    aws_api_gateway_integration.options_mock
   ]
 
-  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
-  stage_name  = "test"
+  rest_api_id       = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  stage_name        = "test"
+  stage_description = timestamp()
 }
 
 resource "aws_lambda_permission" "list_all" {
@@ -420,4 +422,84 @@ resource "aws_lambda_permission" "allow_cloudwatch_to_call_check_foo" {
   function_name = aws_lambda_function.scrape_dilbert_lambda.arn
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.utc20.arn
+}
+
+
+#CORS
+# module "cors" {
+#   source  = "squidfunk/api-gateway-enable-cors/aws"
+#   version = "0.3.1"
+
+#   api_id          = aws_api_gateway_rest_api.cartelm_api_gateway.id
+#   api_resource_id = aws_api_gateway_resource.subscription.id
+#   #  aws_api_gateway_rest_api.cartelm_api_gateway.root_resource_id
+
+# }
+
+
+# module "apigateway_with_cors" {
+#   source  = "alparius/apigateway-with-cors/aws"
+#   version = "0.3.1"
+
+#   lambda_function_name = aws_lambda_function.list_all_lambda.function_name
+#   lambda_invoke_arn    = aws_lambda_function.list_all_lambda.invoke_arn
+# }
+
+
+resource "aws_api_gateway_method" "method_options" {
+  rest_api_id   = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id   = aws_api_gateway_resource.subscriptions.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_mock" {
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id = aws_api_gateway_resource.subscriptions.id
+  http_method = aws_api_gateway_method.method_options.http_method
+
+  type = "MOCK"
+
+  request_templates = {
+    "application/json" = "{ \"statusCode\": 200 }"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "response_options" {
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id = aws_api_gateway_resource.subscriptions.id
+  http_method = aws_api_gateway_method.method_options.http_method
+  status_code = 200
+
+  # response_parameters = local.integration_response_parameters
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'",
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'",
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT'"
+  }
+  depends_on = [
+    aws_api_gateway_integration.options_mock,
+    aws_api_gateway_method_response.method_options_response,
+  ]
+}
+
+# aws_api_gateway_method_response._
+resource "aws_api_gateway_method_response" "method_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  resource_id = aws_api_gateway_resource.subscriptions.id
+  http_method = aws_api_gateway_method.method_options.http_method
+  status_code = 200
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true,
+    "method.response.header.Access-Control-Allow-Methods" = true,
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+  response_models = {
+    "application/json" = "Empty"
+  }
+
+  depends_on = [
+    aws_api_gateway_method.method_options,
+  ]
 }
