@@ -2,39 +2,81 @@ module Main exposing (..)
 
 import Browser
 import Html exposing (Html, div, h1, img, table, td, text, th, thead, tr)
-import Html.Attributes exposing (src)
+import Html.Attributes exposing (required, src)
+import Http
+import Json.Decode as JD exposing (Decoder, field, list, string, succeed)
+
+
+baseUrl : String
+baseUrl =
+    "https://64dz3dvrfl.execute-api.us-west-2.amazonaws.com"
 
 
 
+-- import Json.Decode.Pipeline exposing (required)
 ---- MODEL ----
 
 
 type alias OneSub =
-    { email : String
+    { subscriptionId : String
     , cartoon : String
+    , email : String
     }
 
 
 type alias Model =
-    List OneSub
+    { sublist : List OneSub }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( [ { email = "e1", cartoon = "c1" }, { email = "e2", cartoon = "c2" } ], Cmd.none )
+initialModel : Model
+initialModel =
+    { sublist = [] }
+
+
+init : () -> ( Model, Cmd Msg )
+init () =
+    ( initialModel, fetchGetAllSubs )
 
 
 
 ---- UPDATE ----
 
 
+cartDecoder : Decoder OneSub
+cartDecoder =
+    JD.map3 OneSub
+        (field "subscriptionId" string)
+        (field "cartoon" string)
+        (field "email" string)
+
+
+cartListDecoder : Decoder (List OneSub)
+cartListDecoder =
+    list cartDecoder
+
+
 type Msg
-    = NoOp
+    = LoadSubscriptions (Result Http.Error (List OneSub))
+
+
+fetchGetAllSubs : Cmd Msg
+fetchGetAllSubs =
+    Http.get { url = baseUrl ++ "/test/subscription", expect = Http.expectJson LoadSubscriptions cartListDecoder }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        LoadSubscriptions (Ok sublist) ->
+            ( { model | sublist = sublist }, Cmd.none )
+
+        LoadSubscriptions (Err _) ->
+            ( model, Cmd.none )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
 
 
 
@@ -58,7 +100,7 @@ view model =
                 [ th [] [ text "Email" ]
                 , th [] [ text "Cartoon" ]
                 ]
-                :: List.map viewOneSub model
+                :: List.map viewOneSub model.sublist
             )
         ]
 
@@ -71,7 +113,7 @@ main : Program () Model Msg
 main =
     Browser.element
         { view = view
-        , init = \_ -> init
+        , init = init
         , update = update
         , subscriptions = always Sub.none
         }

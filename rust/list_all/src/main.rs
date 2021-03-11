@@ -5,6 +5,7 @@ use rusoto_core::Region;
 use rusoto_dynamodb::{DynamoDb, DynamoDbClient, ScanInput};
 use serde_derive::{Deserialize, Serialize};
 use simple_logger::SimpleLogger;
+use std::collections::HashMap;
 use std::env;
 
 #[derive(Serialize)]
@@ -25,6 +26,7 @@ struct CustomOutput {
     #[serde(rename = "statusCode")]
     status_code: u16,
     body: String,
+    headers: HashMap<&'static str, &'static str>,
 }
 
 impl CustomOutput {
@@ -33,6 +35,9 @@ impl CustomOutput {
             is_base64_encoded: false,
             status_code: 200,
             body,
+            headers: vec![("Access-Control-Allow-Origin", "*")]
+                .into_iter()
+                .collect(),
         }
     }
 }
