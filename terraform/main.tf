@@ -308,9 +308,9 @@ resource "aws_api_gateway_deployment" "api_gateway_deployment" {
     aws_api_gateway_integration.options_mock_one
   ]
 
-  rest_api_id       = aws_api_gateway_rest_api.cartelm_api_gateway.id
-  stage_name        = "test"
-  stage_description = timestamp()
+  rest_api_id = aws_api_gateway_rest_api.cartelm_api_gateway.id
+  stage_name  = "test"
+  # stage_description = timestamp() # Enable to force redeploy on every run (use when editing the API)
 }
 
 resource "aws_lambda_permission" "list_all" {

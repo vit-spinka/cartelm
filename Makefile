@@ -1,6 +1,6 @@
-.PHONY: all rust
+.PHONY: all rust terraform elm
 
-all: rust terraform
+all: rust terraform elm
 
 terraform:
 	cd terraform && terraform apply
@@ -13,3 +13,6 @@ rust:
 	cd rust && cp ./target/x86_64-unknown-linux-musl/release/delete ./bootstrap && zip delete.zip bootstrap && rm bootstrap
 	cd rust && cp ./target/x86_64-unknown-linux-musl/release/create ./bootstrap && zip create.zip bootstrap && rm bootstrap	
 	cd rust && cp ./target/x86_64-unknown-linux-musl/release/scrape_dilbert ./bootstrap && zip scrape_dilbert.zip bootstrap && rm bootstrap
+
+elm:
+	cd cartapp && elm-app build
